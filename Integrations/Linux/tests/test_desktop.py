@@ -415,6 +415,17 @@ else:
         self.assertFalse(value['busy'])
         self.assertEqual(len((self.root / 'calls.jsonl').read_text().splitlines()), count)
 
+    def test_menu_snapshot_respects_identity_and_keeps_credentials_private(self):
+        self.assertNotIn('private@example.com', json.dumps(self.client('--menu-snapshot')))
+        self.client('--configure', '{"showIdentity":true,"showCredits":false}')
+        self.wait_for(lambda value: not value['busy'])
+        menu = self.client('--menu-snapshot')
+        self.assertEqual(menu['entries'][0]['accountLabel'], 'private@example.com')
+        self.assertFalse(menu['settings']['showCredits'])
+        self.assertNotIn('executable', menu['settings'])
+        self.assertNotIn(str(self.fake), json.dumps(menu))
+        self.assertNotIn('private@example.com', json.dumps(self.client('--snapshot')))
+
     def test_display_settings_validation(self):
         self.assertTrue(self.client('--configure', '{"quotaDisplay":"used","resetDisplay":"both","showPace":false,"trayStyle":"icon","followOmarchyTheme":true}')['ok'])
         self.assertFalse(self.client('--configure', '{"resetDisplay":"nonsense"}', check=False)['ok'])
