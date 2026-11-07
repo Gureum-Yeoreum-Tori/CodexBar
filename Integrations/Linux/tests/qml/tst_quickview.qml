@@ -40,7 +40,7 @@ TestCase {
         desktop.settings = {showCosts: true, quotaDisplay: "remaining", resetDisplay: "countdown",
             showPace: true, warningColors: true, notifyThreshold: 10};
         desktop.spending = [{provider: "codex", today: 3, month: 12, tokens: 100, provenance: "local",
-            coverage: "History may be incomplete", error: "Synthetic provider cost error"}];
+            device: "local", todayTokens: 12500, daily: [{date: "2030-01-01", totalCost: 3, totalTokens: 12500}], coverage: "History may be incomplete", error: "Synthetic provider cost error"}];
         desktop.costError = "Local spending could not be refreshed. Previous data may be stale.";
         desktop.costBusy = false;
         view = createTemporaryObject(viewComponent, testCase, {visible: true});
@@ -48,11 +48,12 @@ TestCase {
     }
     function test_retainedCostShowsRefreshError() {
         tryVerify(function() { return shown(desktop.costError); });
-        verify(shown("Today $3.00  ·  Last 30 days $12.00"));
+        verify(shown("오늘"));
+        verify(shown("$3.00"));
     }
     function test_partialCostShowsCoverageAndProviderError() {
-        tryVerify(function() { return shown("History may be incomplete"); });
-        verify(shown("Synthetic provider cost error"));
+        tryVerify(function() { return shown("Synthetic provider cost error · History may be incomplete"); });
+        verify(shown("Synthetic provider cost error · History may be incomplete"));
     }
     function test_firstFailureIsVisibleWithoutCachedTotals() {
         desktop.spending = [];
@@ -66,11 +67,36 @@ TestCase {
     function test_disabledCostsHideErrorsAndTotals() {
         desktop.settings = {showCosts: false, quotaDisplay: "remaining", resetDisplay: "countdown",
             showPace: true, warningColors: true, notifyThreshold: 10};
-        tryVerify(function() { return !shown("Cost across accounts"); });
+        tryVerify(function() { return !shown("사용량 기록"); });
         verify(!shown(desktop.costError));
     }
+    function test_singleProviderUsesCompactMacLayout() {
+        compare(view.width, 310);
+        var switcher = findChild(view.contentItem, "providerSwitcher");
+        verify(switcher);
+        verify(!switcher.visible);
+        verify(view.height <= 720);
+        verify(shown("Refresh"));
+        verify(shown("Dashboard"));
+    }
+    function test_macSourceAndArchSwitch() {
+        desktop.spending = desktop.spending.concat([{provider: "codex", device: "mac", today: 5, month: 20,
+            todayTokens: 800, tokens: 4000, currency: "KRW", exchangeRate: 1400, collectedAt: "2030-01-01T00:00:00Z",
+            daily: [], error: "", coverage: "Local history"}]);
+        tryVerify(function() { return shown("₩7,000"); });
+        var arch = findChild(view.contentItem, "cost-device-local");
+        verify(arch);
+        waitForRendering(arch);
+        mouseClick(arch, arch.width / 2, arch.height / 2);
+        compare(findChild(view.contentItem, "costDashboard").selectedDevice, "local");
+        tryVerify(function() { return shown("₩4,200"); });
+        var total = findChild(view.contentItem, "cost-device-total");
+        verify(total); mouseClick(total, total.width / 2, total.height / 2);
+        tryVerify(function() { return shown("₩11,200"); });
+        verify(shown("₩44,800"));
+    }
     function test_syntheticRender() {
-        tryVerify(function() { return shown("Cost across accounts"); });
-        grabImage(view.contentItem).save("quick-view-synthetic.png");
+        tryVerify(function() { return shown("사용량 기록"); });
+        grabImage(view.contentItem).save(".local/quick-view-synthetic.png");
     }
 }
