@@ -1,0 +1,14 @@
+{
+  "KPlugin": {
+    "Id": "io.github.GureumYeoreumTori.codexbar",
+    "Name": "CodexBar",
+    "Description": "CodexBar account quota and compact menu, backed by the shared Linux desktop",
+    "Icon": "utilities-system-monitor",
+    "Category": "System Information",
+    "License": "MIT",
+    "Version": "0.1.0",
+    "Website": "https://github.com/Gureum-Yeoreum-Tori/CodexBar"
+  },
+  "KPackageStructure": "Plasma/Applet",
+  "X-Plasma-API-Minimum-Version": "6.0"
+}
