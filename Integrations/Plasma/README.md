@@ -25,3 +25,26 @@ configuration. The ordinary `--snapshot` endpoint remains identity-free.
 This is a native menu port, not macOS API emulation. Managed-account editing,
 CloudKit, Sparkle updates and macOS-only submenus are not implemented. No Mac
 credentials or screen contents are copied.
+
+## Mac cost history
+
+The menu includes today/30-day costs and tokens, a 30-day chart with cost/token
+selection, and four calendar-based seven-day summaries. These summaries are not
+quota-reset windows: the CLI does not export the macOS app's observed reset
+boundaries or hourly cost slices. Unknown values stay unknown. Mac and Arch
+histories are selectable. An optional Total view sums their daily values and totals;
+it explicitly warns that replicated histories can overlap. It is not deduplicated
+account billing, and missing amounts remain unknown.
+
+For opt-in Mac history, run this installer with `--mac-host user@trusted-host`.
+SSH key login and a verified known-host entry must already work. The Mac needs
+`/opt/homebrew/bin/codexbar` and `/usr/bin/python3`. A user systemd timer fetches
+aggregates every five minutes. The exporter filters on the Mac before transport:
+only daily numeric costs/tokens, aggregate totals, display currency and its cached
+exchange rate cross SSH. Chat content, project paths, account labels and auth files
+are excluded. A missing exchange rate falls back to labeled USD. A failed fetch
+retains the last successful private cache and the menu shows its collection time.
+
+Disable synchronization with `systemctl --user disable --now codexbar-mac-costs.timer`.
+The host lives only in `~/.config/codexbar/mac-sync.json`; the private cache is
+`~/.cache/codexbar/mac-costs.json`.

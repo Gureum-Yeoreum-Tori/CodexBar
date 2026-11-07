@@ -8,6 +8,7 @@ import argparse
 import datetime
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -26,7 +27,10 @@ def xdg(variable, fallback):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--replace-kodexbar-suite', action='store_true')
+    parser.add_argument('--mac-host', help='Opt in to aggregate-only cost sync from an already trusted SSH host')
     args = parser.parse_args()
+    if args.mac_host and not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.@:-]{0,200}', args.mac_host):
+        parser.error('Invalid SSH host')
     home = Path.home()
     data = xdg('XDG_DATA_HOME', home / '.local/share')
     config = xdg('XDG_CONFIG_HOME', home / '.config')
@@ -47,7 +51,7 @@ def main():
         shutil.copy2(REPO / 'Integrations/Plasma/metadata.json', stage / 'metadata.json')
         menu = stage / 'contents/ui/menu'
         menu.mkdir()
-        for name in ['MenuContent.qml', 'MenuMetric.qml']:
+        for name in ['MenuContent.qml', 'MenuMetric.qml', 'MenuCosts.qml']:
             shutil.copy2(REPO / 'Integrations/Linux/qml' / name, menu / name)
         shared = stage / 'contents/ui/Shared'
         shared.mkdir()
@@ -83,6 +87,27 @@ def main():
                 name = path.name
                 destination = launchers / (folder.name + '-' + name)
                 shutil.move(str(path), destination)
+    if args.mac_host:
+        binary = home / '.local/bin/codexbar-mac-costs'
+        binary.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(REPO / 'Integrations/Linux/mac_costs.py', binary)
+        binary.chmod(0o755)
+        preferences = config / 'codexbar/mac-sync.json'
+        preferences.parent.mkdir(parents=True, exist_ok=True)
+        if preferences.exists():
+            shutil.copy2(preferences, backup / 'mac-sync.json')
+        preferences.write_text(json.dumps({'host': args.mac_host}) + '\n')
+        preferences.chmod(0o600)
+        units = config / 'systemd/user'
+        units.mkdir(parents=True, exist_ok=True)
+        (units / 'codexbar-mac-costs.service').write_text(
+            '[Unit]\nDescription=Sync Mac CodexBar daily aggregates\n[Service]\nType=oneshot\n'
+            'ExecStart=%h/.local/bin/codexbar-mac-costs\nTimeoutStartSec=120\nUMask=0077\n')
+        (units / 'codexbar-mac-costs.timer').write_text(
+            '[Unit]\nDescription=Refresh Mac CodexBar aggregates\n[Timer]\n'
+            'OnStartupSec=20\nOnUnitActiveSec=5min\n[Install]\nWantedBy=timers.target\n')
+        subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
+        subprocess.run(['systemctl', '--user', 'enable', '--now', 'codexbar-mac-costs.timer'], check=True)
     print(json.dumps({'installed': str(applets / APP_ID), 'backup': str(backup),
                       'replacedKodexbarSuite': args.replace_kodexbar_suite}))
 
