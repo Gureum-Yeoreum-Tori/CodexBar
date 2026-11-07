@@ -24,9 +24,10 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: 8
         Label {
-            text: root.metric.label
+            text: (root.metric.minutes === 10080 ? "주간" : root.metric.minutes === 300 ? "세션" : root.metric.label) +
+                " " + root.amount + "% " + (root.quotaDisplay === "used" ? "사용" : "남음")
             color: root.primaryText
-            font.pixelSize: 15
+            font.pixelSize: 13
             font.weight: Font.DemiBold
             elide: Text.ElideRight
             Layout.fillWidth: true
@@ -57,12 +58,6 @@ ColumnLayout {
             radius: parent.radius
             color: root.warning ? "#d9874a" : root.accent
         }
-    }
-    Label {
-        Layout.fillWidth: true
-        text: root.amount + "% " + (root.quotaDisplay === "used" ? "used" : "left")
-        color: root.primaryText
-        font.pixelSize: 13
     }
     Label {
         Layout.fillWidth: true
