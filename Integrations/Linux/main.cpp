@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
     QCommandLineParser parser;
     parser.setApplicationDescription("CodexBar desktop for Linux · Qt windows and optional tray");
     parser.addHelpOption(); parser.addVersionOption();
-    for (const auto &name : {"snapshot", "refresh", "settings", "spending", "usage", "quick-view", "quit", "background", "no-tray"})
+    for (const auto &name : {"menu-snapshot", "snapshot", "refresh", "settings", "spending", "usage", "quick-view", "quit", "background", "no-tray"})
         parser.addOption(QCommandLineOption(name, QString("%1 the running desktop app").arg(name)));
     parser.addOption(QCommandLineOption("autostart", "Set login startup: enable, disable, status", "action"));
     parser.addOption(QCommandLineOption("configure", "Update desktop settings through local IPC", "json"));
@@ -59,14 +59,14 @@ int main(int argc, char **argv) {
     parser.addOption(QCommandLineOption("with-spending", "With --snapshot, refresh local spending when its cache is stale"));
     parser.process(*application);
     QString command = "usage";
-    for (const auto &name : {"background", "usage", "quick-view", "settings", "spending", "refresh", "snapshot", "quit", "configure", "autostart"})
+    for (const auto &name : {"background", "usage", "quick-view", "settings", "spending", "refresh", "menu-snapshot", "snapshot", "quit", "configure", "autostart"})
         if (parser.isSet(name)) command = name;
-    const bool clientOnly = QStringList{"snapshot", "refresh", "quit", "configure", "autostart"}.contains(command);
+    const bool clientOnly = QStringList{"menu-snapshot", "snapshot", "refresh", "quit", "configure", "autostart"}.contains(command);
     const bool noTray = parser.isSet("no-tray");
     const auto cli = parser.value("cli");
     QJsonObject message{{"command", command}};
     if (command == "autostart") message["action"] = parser.value("autostart");
-    if (command == "snapshot" && parser.isSet("with-spending")) message["spending"] = true;
+    if ((command == "snapshot" || command == "menu-snapshot") && parser.isSet("with-spending")) message["spending"] = true;
     if (command == "configure") {
         QJsonParseError error;
         const auto document = QJsonDocument::fromJson(parser.value("configure").toUtf8(), &error);

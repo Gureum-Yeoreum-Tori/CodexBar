@@ -3,6 +3,8 @@
   <file>Shared/Notifications.js</file>
   <file>qml/Main.qml</file>
   <file>qml/QuickView.qml</file>
+  <file>qml/MenuContent.qml</file>
+  <file>qml/MenuCosts.qml</file>
   <file>qml/MenuMetric.qml</file>
   <file>qml/Dashboard.qml</file>
   <file>qml/SettingsWindow.qml</file>

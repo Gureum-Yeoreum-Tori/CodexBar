@@ -34,7 +34,7 @@ public:
     Q_INVOKABLE bool setLaunchAtLogin(bool enabled);
     Q_INVOKABLE bool accountAction(const QString &provider, const QString &action);
     QVariantList entries() const { return m_entries; }
-    QVariantList spending() const { return m_spending; }
+    QVariantList spending() const;
     QVariantMap settings() const { return m_settings; }
     QString error() const { return m_error; }
     QString costError() const { return m_costError; }

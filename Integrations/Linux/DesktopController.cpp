@@ -99,7 +99,7 @@ bool DesktopController::validate(QVariantMap &values) {
         !QStringList{"meters", "icon"}.contains(values.value("trayStyle").toString())) {
         m_configError = "Unsupported display preference."; return false;
     }
-    for (const auto &key : {"allAccounts", "showIdentity", "showCosts", "showStatus", "notifications", "showTray", "compactQuickView", "refreshOnOpen", "showPace", "showBarDetail", "showScopedCaps", "warningColors", "followOmarchyTheme"})
+    for (const auto &key : {"allAccounts", "showIdentity", "showCosts", "showCredits", "showStatus", "notifications", "showTray", "compactQuickView", "refreshOnOpen", "showPace", "showBarDetail", "showScopedCaps", "warningColors", "followOmarchyTheme"})
         values[key] = values.value(key).toBool();
     return true;
 }
@@ -107,7 +107,7 @@ bool DesktopController::validate(QVariantMap &values) {
 void DesktopController::loadSettings(const QString &cliOverride) {
     m_settings = {{"executable", "codexbar"}, {"provider", "codex"}, {"source", "auto"},
         {"refreshSeconds", 300}, {"accountIndex", 0}, {"notifyThreshold", 10}, {"allAccounts", false},
-        {"showIdentity", false}, {"showCosts", true}, {"showStatus", true}, {"notifications", false}, {"showTray", true}, {"compactQuickView", false}, {"refreshOnOpen", false}, {"providerOrder", QStringList{}},
+        {"showIdentity", false}, {"showCosts", true}, {"showCredits", true}, {"showStatus", true}, {"notifications", false}, {"showTray", true}, {"compactQuickView", false}, {"refreshOnOpen", false}, {"providerOrder", QStringList{}},
         {"quotaDisplay", "remaining"}, {"resetDisplay", "countdown"}, {"showPace", true},
         {"showBarDetail", false}, {"showScopedCaps", false}, {"barProviders", 2},
         {"warningColors", true}, {"trayStyle", "meters"}, {"followOmarchyTheme", false}};
@@ -194,6 +194,21 @@ void DesktopController::nextProvider() {
     // Process deadlines and groups are managed here, without a coreutils dependency.
     args = args.mid(3);
     probe(m_usage, args, false);
+}
+
+QVariantList DesktopController::spending() const {
+    auto result = m_spending;
+    QFile cache(QStandardPaths::writableLocation(QStandardPaths::GenericCacheLocation) + "/codexbar/mac-costs.json");
+    if (cache.open(QIODevice::ReadOnly) && cache.size() < 100000) {
+        const auto parsed = call(m_usageModel, "costs", {QString::fromUtf8(cache.readAll())});
+        if (parsed.isArray() && !parsed.isError()) {
+            for (const auto &value : parsed.toVariant().toList()) {
+                const auto row = value.toMap();
+                if (row.value("provider") == "codex" && row.value("device") == "mac") result.append(value);
+            }
+        }
+    }
+    return result;
 }
 
 void DesktopController::refreshCosts() {
@@ -384,7 +399,7 @@ bool DesktopController::listen(const QString &socketPath) {
                 const auto request = QJsonDocument::fromJson(input->left(input->indexOf('\n'))).object();
                 const auto command = request.value("command").toString();
                 QJsonObject response{{"ok", true}};
-                if (command == "snapshot" || command == "background") {
+                if (command == "snapshot" || command == "menu-snapshot" || command == "background") {
                     // Panel adapters may opt in to spending without opening the window; reuse its five-minute
                     // cache, and after a failed scan retry at most every few seconds so polling stays bounded.
                     const auto now = QDateTime::currentMSecsSinceEpoch();
@@ -394,6 +409,16 @@ bool DesktopController::listen(const QString &socketPath) {
                         refreshCosts();
                     }
                     response = snapshot();
+                    if (command == "menu-snapshot") {
+                        // Explicit same-user desktop view. Ordinary snapshots stay identity-free.
+                        response["entries"] = QJsonArray::fromVariantList(m_entries);
+                        response["spending"] = QJsonArray::fromVariantList(spending());
+                        QJsonObject display;
+                        for (const auto &key : {"showCosts", "showCredits", "showIdentity", "quotaDisplay",
+                             "resetDisplay", "showPace", "warningColors", "notifyThreshold", "refreshOnOpen"})
+                            display[key] = QJsonValue::fromVariant(m_settings.value(key));
+                        response["settings"] = display;
+                    }
                 }
                 else if (command == "autostart") {
                     const auto action = request.value("action").toString();
