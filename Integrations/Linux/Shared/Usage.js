@@ -185,7 +185,23 @@ function costs(text, today) {
         var totals = row.totals || {};
         var daily = Array.isArray(row.daily) ? row.daily.slice(-30) : [];
         var todayRow = daily.find(function(day) { return day.date === today; });
-        return {provider: row.provider, today: todayRow ? number(todayRow.totalCost) :
+        var latest = daily.length ? daily[daily.length - 1] : {};
+        var days = [];
+        for (var i = 29; i >= 0; --i) {
+            var date = new Date(today + "T12:00:00"); date.setDate(date.getDate() - i);
+            var key = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+            var day = daily.find(function(d) { return d.date === key; });
+            var absent = row.historyCoverageIsEstablished === true && !row.error ? 0 : null;
+            days.push({date: key, totalCost: day ? number(day.totalCost) : absent,
+                totalTokens: day ? number(day.totalTokens) : absent});
+        }
+        return {provider: row.provider, device: row.device === "mac" ? "mac" : "local",
+            currency: /^[A-Z]{3}$/.test(row.currency || "") ? row.currency : "USD",
+            exchangeRate: number(row.exchangeRate) > 0 ? row.exchangeRate : 1,
+            collectedAt: String(row.collectedAt || ""), daily: days,
+            latestTokens: number(latest.totalTokens), todayTokens: todayRow ? number(todayRow.totalTokens) :
+                row.historyCoverageIsEstablished === true && !row.error ? 0 : null,
+            today: todayRow ? number(todayRow.totalCost) :
                 row.historyCoverageIsEstablished === true && !row.error ? 0 : null, month: number(row.last30DaysCostUSD),
             tokens: number(row.last30DaysTokens), input: number(totals.inputTokens), output: number(totals.outputTokens),
             cached: number(totals.cacheReadTokens), provenance: String(row.provenance || "unknown"),
