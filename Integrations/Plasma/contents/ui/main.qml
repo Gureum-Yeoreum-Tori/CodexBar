@@ -31,9 +31,9 @@ PlasmoidItem {
     function action(command) {
         commands.connectSource(executable + " --" + command);
     }
-    onExpandedChanged: {
+    onExpandedChanged: function() {
         poll();
-        if (expanded && state.settings.refreshOnOpen) action("refresh");
+        if (root.expanded && state.settings.refreshOnOpen) action("refresh");
     }
     Component.onCompleted: poll()
     Timer { interval: root.expanded ? 1000 : 5000; running: true; repeat: true; onTriggered: root.poll() }
